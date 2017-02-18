@@ -1,4 +1,6 @@
 #tested with python2.7
+import time
+
 import network
 import mnist_loader
 import network2
@@ -20,12 +22,16 @@ def n2():
     print(tc)
     print(ta)
 
-def n3():
+def n3_noconv():
+    #74.6 seconds - GPU false
     training_data, validation_data, test_data = network3.load_data_shared()
     mini_batch_size = 10
-    #iter1
-    #net = network3.Network([ network3.FullyConnectedLayer(n_in=784, n_out=100), network3.SoftmaxLayer(n_in=100, n_out=10)], mini_batch_size)
-    #iter2
+    net = network3.Network([ network3.FullyConnectedLayer(n_in=784, n_out=100), network3.SoftmaxLayer(n_in=100, n_out=10)], mini_batch_size)
+    net.SGD(training_data, 10, mini_batch_size, 0.1, validation_data, test_data)
+
+def n3_one_conv():
+    training_data, validation_data, test_data = network3.load_data_shared()
+    mini_batch_size = 10
     net =  network3.Network([ network3.ConvPoolLayer(image_shape=(mini_batch_size, 1, 28, 28),
                       filter_shape=(20, 1, 5, 5),
                       poolsize=(2, 2)),
@@ -33,4 +39,44 @@ def n3():
         network3.SoftmaxLayer(n_in=100, n_out=10)], mini_batch_size)
     net.SGD(training_data, 10, mini_batch_size, 0.1, validation_data, test_data)
 
-n3()
+def n3_twoconv():
+    training_data, validation_data, test_data = network3.load_data_shared()
+    mini_batch_size = 10
+    net = network3.Network([
+        network3.ConvPoolLayer(image_shape=(mini_batch_size, 1, 28, 28),
+                      filter_shape=(20, 1, 5, 5),
+                      poolsize=(2, 2)),
+        network3.ConvPoolLayer(image_shape=(mini_batch_size, 20, 12, 12),
+                      filter_shape=(40, 20, 5, 5),
+                      poolsize=(2, 2)),
+        network3.FullyConnectedLayer(n_in=40 * 4 * 4, n_out=100),
+        network3.SoftmaxLayer(n_in=100, n_out=10)], mini_batch_size)
+    net.SGD(training_data, 10, mini_batch_size, 0.1, validation_data, test_data)
+
+def n3_relu_regularization():
+    training_data, validation_data, test_data = network3.load_data_shared()
+    mini_batch_size = 10
+    net = network3.Network([
+        network3.ConvPoolLayer(image_shape=(mini_batch_size, 1, 28, 28),
+                      filter_shape=(20, 1, 5, 5),
+                      poolsize=(2, 2),
+                      activation_fn=network3.ReLU),
+        network3.ConvPoolLayer(image_shape=(mini_batch_size, 20, 12, 12),
+                      filter_shape=(40, 20, 5, 5),
+                      poolsize=(2, 2),
+                      activation_fn=network3.ReLU),
+        network3.FullyConnectedLayer(n_in=40 * 4 * 4, n_out=100, activation_fn=network3.ReLU),
+        network3.SoftmaxLayer(n_in=100, n_out=10)], mini_batch_size)
+    net.SGD(training_data, 60, mini_batch_size, 0.03, validation_data, test_data, lmbda=0.1)
+
+def timedRun(methodToRun):
+    start = time.time()
+    result = methodToRun()
+    end = time.time()
+    diff = end - start
+    print("Method: " + str(methodToRun) + "Time Taken :" + str(diff))
+    print(result)
+
+#timedRun(n3_noconv)
+#timedRun(n3_twoconv)
+timedRun(n3_relu_regularization)
